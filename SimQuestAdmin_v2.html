@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Sim Quest – Score Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cinzel+Decorative:wght@700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+:root {
+  --parchment: #f5e6c8; --parch-dark: #e8d5a3; --parch-deep: #c9a96e;
+  --ink: #2c1810; --ink-mid: #4a2c1a; --ink-light: #7a5c3a;
+  --gold: #c9952a; --gold-bright: #f0c040;
+  --crimson: #8b1a1a; --crimson-lt: #c0392b;
+  --t0: #8b1a1a; --t0l: #c0392b;
+  --t1: #3d5a2a; --t1l: #5a8a3a;
+  --t2: #3d1a5a; --t2l: #7b3fa0;
+  --t3: #1a2a5a; --t3l: #2471a3;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  background: var(--ink);
+  font-family: 'IM Fell English', serif;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ── Header ── */
+header {
+  background: linear-gradient(180deg, #1a0d06 0%, #2c1810 60%, #1a0d06 100%);
+  border-bottom: 3px solid var(--gold);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+}
+.header-title { display: flex; flex-direction: column; gap: 1px; }
+.header-eyebrow {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 4px;
+  color: var(--gold);
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+h1 {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  letter-spacing: 1px;
+  text-shadow: 0 0 12px rgba(240,192,64,0.4);
+}
+.sync-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+.sync-pill.connected { background: rgba(26,74,26,0.3); border: 1px solid #27ae60; color: #a8e6b8; }
+.sync-pill.local     { background: rgba(74,44,26,0.3); border: 1px solid var(--gold); color: var(--parch-deep); }
+.sync-pill.error     { background: rgba(139,26,26,0.3); border: 1px solid var(--crimson-lt); color: #ffaaaa; }
+.sync-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%   { opacity: 1; transform: scale(1); }
+  50%  { opacity: 0.5; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ── Controls bar ── */
+.controls-bar {
+  background: rgba(44,24,16,0.7);
+  border-bottom: 2px solid rgba(201,149,42,0.25);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 65px;
+  z-index: 99;
+}
+.bar-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 3px;
+  color: var(--gold);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.step-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 7px 14px;
+  min-height: 36px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(201,149,42,0.35);
+  background: rgba(44,24,16,0.5);
+  color: var(--parch-deep);
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+  touch-action: manipulation;
+}
+.step-btn.active { background: var(--gold); color: var(--ink); border-color: var(--gold-bright); }
+.reset-btn {
+  margin-left: auto;
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 7px 14px;
+  min-height: 36px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(139,26,26,0.5);
+  background: rgba(139,26,26,0.15);
+  color: #e07070;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+  touch-action: manipulation;
+}
+.reset-btn:active { background: rgba(139,26,26,0.5); }
+
+/* ── Team cards ── */
+main {
+  flex: 1;
+  padding: 12px 12px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.team-card {
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--ink), 0 0 0 5px var(--gold), 3px 3px 14px rgba(0,0,0,0.7);
+}
+.team-card[data-team="0"] { --tc: var(--t0); --tcl: var(--t0l); }
+.team-card[data-team="1"] { --tc: var(--t1); --tcl: var(--t1l); }
+.team-card[data-team="2"] { --tc: var(--t2); --tcl: var(--t2l); }
+.team-card[data-team="3"] { --tc: var(--t3); --tcl: var(--t3l); }
+
+.team-header {
+  background: linear-gradient(135deg, var(--tc) 0%, var(--tcl) 100%);
+  padding: 11px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.team-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+}
+.team-total-wrap { text-align: right; }
+.team-total {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+}
+.team-total-sub {
+  font-family: 'Cinzel', serif;
+  font-size: 0.52rem;
+  color: rgba(255,255,255,0.65);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ── Stage rows ── */
+.stage-rows {
+  background: linear-gradient(160deg, #f5e6c8, #e8d5a3, #dcc88a);
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stage-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(44,24,16,0.06);
+  border: 1px solid rgba(201,149,42,0.22);
+  border-radius: 4px;
+  padding: 8px 10px;
+  transition: background 0.25s, border-color 0.25s;
+}
+.stage-row.has-score {
+  background: rgba(44,24,16,0.11);
+  border-color: rgba(201,149,42,0.5);
+}
+.stage-info { flex: 1; min-width: 0; }
+.stage-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-mid);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.stage-max-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.58rem;
+  color: var(--ink-light);
+  letter-spacing: 1px;
+}
+
+/* ── Score adjuster ── */
+.score-adjuster {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1.5px solid rgba(201,149,42,0.4);
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.adj-btn {
+  width: 46px;
+  height: 46px;
+  background: rgba(44,24,16,0.1);
+  border: none;
+  border-radius: 0;
+  color: var(--ink-mid);
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-family: 'Cinzel', serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  user-select: none;
+  transition: background 0.1s;
+  -webkit-user-select: none;
+  line-height: 1;
+}
+.adj-btn:active { background: var(--tc); color: var(--gold-bright); }
+.adj-btn.minus:active { background: rgba(139,26,26,0.7); color: #ffcccc; }
+.score-val {
+  width: 52px;
+  height: 46px;
+  text-align: center;
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(255,255,255,0.55);
+  border: none;
+  border-left: 1px solid rgba(201,149,42,0.3);
+  border-right: 1px solid rgba(201,149,42,0.3);
+  outline: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+/* Editable input variant */
+input.score-val {
+  cursor: text;
+}
+input.score-val:focus {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px rgba(201,149,42,0.5);
+}
+input.score-val.over { color: var(--crimson); }
+
+/* ── Sync flash toast ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(60px);
+  background: rgba(26,74,26,0.95);
+  border: 1px solid #27ae60;
+  border-radius: 20px;
+  padding: 8px 22px;
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #a8e6b8;
+  z-index: 300;
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+/* ── Confirm overlay ── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.overlay.show { display: flex; }
+.confirm-box {
+  background: linear-gradient(160deg, #f5e6c8, #e8d5a3);
+  border: 3px solid var(--gold);
+  border-radius: 6px;
+  padding: 32px 28px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--gold), 0 0 40px rgba(0,0,0,0.7);
+  width: 100%;
+  max-width: 340px;
+}
+.confirm-box h2 {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.2rem;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.confirm-box p {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  color: var(--ink-mid);
+  font-size: 0.95rem;
+  margin-bottom: 22px;
+}
+.confirm-btns { display: flex; gap: 10px; justify-content: center; }
+.btn-yes, .btn-no {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 10px 24px;
+  min-height: 44px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  border: 1.5px solid;
+  touch-action: manipulation;
+  transition: all 0.15s;
+}
+.btn-yes { background: rgba(139,26,26,0.12); border-color: var(--crimson-lt); color: var(--crimson); }
+.btn-yes:active { background: var(--crimson-lt); color: #fff; }
+.btn-no { background: rgba(44,24,16,0.1); border-color: rgba(201,149,42,0.5); color: var(--ink-mid); }
+.btn-no:active { background: var(--gold); color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">
+    <span class="header-eyebrow">Score Control</span>
+    <h1>Sim Quest</h1>
+  </div>
+  <div class="sync-pill local" id="syncPill">
+    <div class="sync-dot"></div>
+    <span id="syncLabel">LOCAL</span>
+  </div>
+</header>
+
+<div class="controls-bar">
+  <span class="bar-label">Step</span>
+  <button class="step-btn active" onclick="setStep(1,this)">±1</button>
+  <button class="step-btn" onclick="setStep(5,this)">±5</button>
+  <button class="step-btn" onclick="setStep(10,this)">±10</button>
+  <button class="reset-btn" onclick="showConfirm()">⚔ Reset</button>
+</div>
+
+<main id="teamsGrid"></main>
+
+<div class="overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <h2>Reset All?</h2>
+    <p>All team scores will be cleared. This cannot be undone.</p>
+    <div class="confirm-btns">
+      <button class="btn-yes" onclick="doReset()">Reset All</button>
+      <button class="btn-no"  onclick="hideConfirm()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✦ Synced ✦</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  FIREBASE CONFIG — paste your project's config object here
+//  Leave as-is to use local-only mode (same browser, different tabs)
+// ══════════════════════════════════════════════════════════════
+var FIREBASE_CONFIG = {
+  apiKey:            'AIzaSyCosW37BbfuFnMVt7zaWQqDIDL-zpZS0oY',
+  authDomain:        'simquest-af719.firebaseapp.com',
+  databaseURL:       'https://simquest-af719-default-rtdb.firebaseio.com',
+  projectId:         'simquest-af719',
+  storageBucket:     'simquest-af719.firebasestorage.app',
+  messagingSenderId: '546627648326',
+  appId:             '1:546627648326:web:16f0fe03b4b71f34f98347'
+};
+// ══════════════════════════════════════════════════════════════
+
+var TEAM_NAMES  = ['The Moulage Mages','The Debriefing Druids','The Scenario Sorcerers','The SimPad Sentinels'];
+var STAGE_NAMES = ['Stage 1','Stage 2','Stage 3'];
+var STAGE_MAX   = [20, 50, 30];
+var TOTAL_MAX   = 100;
+
+var scores  = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
+var step    = 1;
+var _db     = null;
+var _ch     = null;
+var toastTimer = null;
+
+// ── Init Firebase or fall back to BroadcastChannel ──
+(function() {
+  if (FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY') {
+    try {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      _db = firebase.database();
+      _db.ref('simquest/scores').once('value', function(snap) {
+        if (snap.val()) { scores = snap.val(); renderAll(); }
+      });
+      setSyncStatus('connected', 'FIREBASE');
+      return;
+    } catch(e) {
+      setSyncStatus('error', 'ERROR');
+    }
+  }
+  // Local fallback
+  try {
+    _ch = new BroadcastChannel('sim-quest-scores');
+    setSyncStatus('local', 'LOCAL');
+  } catch(e) {}
+  try {
+    var saved = localStorage.getItem('simquest_scores');
+    if (saved) { scores = JSON.parse(saved); }
+  } catch(e) {}
+})();
+
+function setSyncStatus(type, label) {
+  var pill  = document.getElementById('syncPill');
+  var lbl   = document.getElementById('syncLabel');
+  pill.className = 'sync-pill ' + type;
+  lbl.textContent = label;
+}
+
+// ── Build UI ──
+function buildGrid() {
+  var grid = document.getElementById('teamsGrid');
+  grid.innerHTML = '';
+  TEAM_NAMES.forEach(function(name, ti) {
+    var card = document.createElement('div');
+    card.className = 'team-card';
+    card.dataset.team = ti;
+
+    var stageRows = STAGE_NAMES.map(function(sname, si) {
+      return '<div class="stage-row" id="srow-'+ti+'-'+si+'">' +
+        '<div class="stage-info">' +
+          '<div class="stage-label">'+sname+'</div>' +
+          '<div class="stage-max-label">Max: '+STAGE_MAX[si]+' pts</div>' +
+        '</div>' +
+        '<div class="score-adjuster">' +
+          '<button class="adj-btn minus" ontouchstart="" onclick="adjust('+ti+','+si+',-1)">−</button>' +
+          '<input class="score-val" id="sv-'+ti+'-'+si+'" type="number" '+
+            'min="0" max="'+STAGE_MAX[si]+'" value="0" '+
+            'onchange="setScore('+ti+','+si+',this.value)" '+
+            'oninput="markOver(this,'+STAGE_MAX[si]+')">' +
+          '<button class="adj-btn plus"  ontouchstart="" onclick="adjust('+ti+','+si+',+1)">+</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    card.innerHTML =
+      '<div class="team-header">' +
+        '<span class="team-name">'+name+'</span>' +
+        '<div class="team-total-wrap">' +
+          '<div class="team-total" id="tt-'+ti+'">0</div>' +
+          '<div class="team-total-sub">/ '+TOTAL_MAX+' pts</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="stage-rows">'+stageRows+'</div>';
+
+    grid.appendChild(card);
+  });
+  renderAll();
+}
+
+// ── Render ──
+function renderAll() {
+  TEAM_NAMES.forEach(function(_, ti) {
+    var total = 0;
+    STAGE_NAMES.forEach(function(_, si) {
+      var v = Math.max(0, Number(scores[ti][si]) || 0);
+      total += v;
+      var inp = document.getElementById('sv-'+ti+'-'+si);
+      if (inp) { inp.value = v; inp.classList.toggle('over', v > STAGE_MAX[si]); }
+      var row = document.getElementById('srow-'+ti+'-'+si);
+      if (row) row.classList.toggle('has-score', v > 0);
+    });
+    var tot = document.getElementById('tt-'+ti);
+    if (tot) tot.textContent = total;
+  });
+}
+
+// ── Adjust by step ──
+function adjust(ti, si, dir) {
+  var cur  = Number(scores[ti][si]) || 0;
+  var next = Math.max(0, Math.min(STAGE_MAX[si], cur + dir * step));
+  scores[ti][si] = next;
+  commit();
+}
+
+// ── Set score directly from input ──
+function setScore(ti, si, val) {
+  scores[ti][si] = Math.max(0, parseInt(val) || 0);
+  commit();
+}
+
+function markOver(inp, max) {
+  inp.classList.toggle('over', (parseInt(inp.value)||0) > max);
+}
+
+// ── Commit & sync ──
+function commit() {
+  renderAll();
+  if (_db) {
+    _db.ref('simquest/scores').set(scores);
+  } else {
+    try { localStorage.setItem('simquest_scores', JSON.stringify(scores)); } catch(e) {}
+    if (_ch) _ch.postMessage({ type: 'scores', scores: scores });
+  }
+  showToast();
+}
+
+// ── Toast ──
+function showToast() {
+  var t = document.getElementById('toast');
+  if (toastTimer) clearTimeout(toastTimer);
+  t.classList.add('show');
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 1200);
+}
+
+// ── Step ──
+function setStep(n, btn) {
+  step = n;
+  document.querySelectorAll('.step-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
+// ── Reset ──
+function showConfirm() { document.getElementById('confirmOverlay').classList.add('show'); }
+function hideConfirm() { document.getElementById('confirmOverlay').classList.remove('show'); }
+function doReset() {
+  scores = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
+  commit();
+  hideConfirm();
+}
+
+buildGrid();
+</script>
+</body>
+</html>
