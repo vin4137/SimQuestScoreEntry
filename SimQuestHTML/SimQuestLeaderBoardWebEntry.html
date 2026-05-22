@@ -1448,7 +1448,7 @@ function startTimer() {
 function showTimerEnd() {
   document.getElementById('timerEndModal').style.display = 'flex';
   
-  try { new Audio('time up.mp3').play().catch(function(){}); } catch(e) {}
+  try { new Audio('time%20up.mp3').play().catch(function(){}); } catch(e) {}
   try {
     var endSound = new Audio('end.mp3');
     endSound.play().catch(function(e) {
