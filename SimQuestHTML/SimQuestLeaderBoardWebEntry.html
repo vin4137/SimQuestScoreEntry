@@ -1,0 +1,1577 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clinical Skills Development Service</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cinzel+Decorative:wght@700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+  :root {
+    --parchment:  #f5e6c8;
+    --parch-dark: #e8d5a3;
+    --parch-deep: #c9a96e;
+    --ink:        #2c1810;
+    --ink-mid:    #4a2c1a;
+    --ink-light:  #7a5c3a;
+    --gold:       #c9952a;
+    --gold-bright:#f0c040;
+    --gold-glow:  #ffd700;
+    --crimson:    #8b1a1a;
+    --crimson-lt: #c0392b;
+    --team-a: #8b1a1a;
+    --team-b: #3d5a2a;
+    --team-c: #3d1a5a;
+    --team-d: #1a2a5a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--ink);
+    font-family: 'IM Fell English', serif;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(ellipse at 30% 20%, rgba(139,26,26,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 80%, rgba(26,26,90,0.15) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  header {
+    position: relative;
+    z-index: 10;
+    background: linear-gradient(180deg, #1a0d06 0%, #2c1810 60%, #1a0d06 100%);
+    border-bottom: 4px solid var(--gold);
+    padding: 0 28px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+  }
+  .header-left { display: flex; flex-direction: column; padding: 10px 0; }
+  .event-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.8rem;
+    letter-spacing: 5px;
+    color: var(--gold);
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+  h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--gold-bright);
+    letter-spacing: 2px;
+    line-height: 1.1;
+    text-shadow: 0 0 20px rgba(240,192,64,0.5), 2px 2px 4px rgba(0,0,0,0.8);
+  }
+  .center-controls {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 20;
+  }
+  .center-top-row {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Space between LIVE and 40:00 */
+  }
+.live-badge {
+    background: rgba(139, 26, 26, 0.2);
+    border: 1px solid var(--crimson-lt);
+    padding: 4px 12px;
+    border-radius: 20px;
+    color: var(--crimson-lt);
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pulse-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #ad2c2c; /* Pure Red */
+    border-radius: 50%;
+    box-shadow: 0 0 10px #ad2c2c;
+    animation: pulse-red 2s infinite;
+  }
+
+  @keyframes pulse-red {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+  }
+  .header-right { text-align: right; }
+  .last-update-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.58rem;
+    color: var(--ink-light);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: block;
+  }
+  #lastUpdate {
+    display: block;
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    color: var(--gold);
+    margin-top: 2px;
+  }
+  .divider {
+    text-align: center;
+    color: var(--gold);
+    font-size: 1rem;
+    letter-spacing: 8px;
+    opacity: 0.5;
+    line-height: 1;
+    flex-shrink: 0;
+    padding: 2px 0;
+    background: linear-gradient(90deg, transparent, rgba(201,149,42,0.1), transparent);
+    position: relative;
+    z-index: 1;
+  }
+  .board {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    padding: 10px 14px;
+    min-height: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .team-card {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .team-card {
+    background: linear-gradient(160deg, #f5e6c8 0%, #e8d5a3 40%, #dcc88a 100%);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--ink), 0 0 0 6px var(--gold), 4px 4px 16px rgba(0,0,0,0.7);
+  }
+  .team-card[data-team="0"] { --tc: #8b1a1a; --tc-lt: #c0392b; }
+  .team-card[data-team="1"] { --tc: #3d5a2a; --tc-lt: #5a8a3a; }
+  .team-card[data-team="2"] { --tc: #3d1a5a; --tc-lt: #7b3fa0; }
+  .team-card[data-team="3"] { --tc: #1a2a5a; --tc-lt: #2471a3; }
+  .rank-badge {
+    position: absolute;
+    top: 7px;
+    right: 10px;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--gold-bright);
+    text-shadow: 0 0 8px rgba(240,192,64,0.7), 1px 1px 2px rgba(0,0,0,0.8);
+    background: rgba(44,24,16,0.5);
+    border: 1px solid rgba(201,149,42,0.5);
+    border-radius: 3px;
+    padding: 2px 6px;
+  }
+  .team-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: var(--tc);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .team-card.flash { animation: parchFlash 1s ease; }
+  @keyframes parchFlash {
+    0%   { box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--ink), 0 0 0 6px var(--gold), 4px 4px 16px rgba(0,0,0,0.7); }
+    30%  { box-shadow: 0 0 0 2px var(--gold-bright), 0 0 0 4px var(--ink), 0 0 0 8px var(--gold-bright), 0 0 40px rgba(240,192,64,0.6); }
+    100% { box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--ink), 0 0 0 6px var(--gold), 4px 4px 16px rgba(0,0,0,0.7); }
+  }
+.team-header {
+    padding: 30px 14px 8px; /* Increased top padding to 30px to clear the rank badge */
+    border-bottom: 2px solid var(--gold);
+    background: linear-gradient(180deg, rgba(44,24,16,0.08) 0%, transparent 100%);
+  }
+  .team-banner { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .team-shield {
+    width: 28px; height: 32px;
+    background: var(--tc);
+    clip-path: polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+  .team-name {
+  font-family: 'Cinzel', serif;
+  font-size: 2rem; 
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.1;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  text-align: center; /* Add this line to centre the text */
+  width: 100%;        /* Ensure it takes up the full width of the card */
+}
+  .team-total-row { display: flex; align-items: baseline; gap: 5px; margin-top: 2px; }
+  .team-total {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .team-total-pts {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    color: var(--ink-light);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .progress-bar-wrap {
+    height: 18px;
+    background: rgba(44,24,16,0.15);
+    margin: 6px 14px 0;
+    border-radius: 9px;
+    border: 1px solid rgba(201,149,42,0.3);
+    position: relative;
+    overflow: visible;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--tc), var(--tc-lt));
+    width: 0%;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 9px;
+    box-shadow: 0 0 6px var(--tc-lt);
+    position: relative;
+    min-width: 0%;
+  }
+  .knight-rider {
+    position: absolute;
+    right: -14px;
+    top: 50%;
+    transform: translateY(-50%) scaleX(-1);
+    font-size: 1.15rem;
+    line-height: 1;
+    filter: drop-shadow(0 0 4px rgba(240,192,64,0.8));
+    pointer-events: none;
+    display: none;
+  }
+  .progress-bar-fill.has-progress .knight-rider {
+    display: block;
+  }
+.stages {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 6px 10px 10px;
+  }
+  .stage-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+  }
+  .stage-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: rgba(44,24,16,0.06);
+    border-radius: 3px;
+    border: 1px solid rgba(201,149,42,0.25);
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.4s, background 0.4s;
+  }
+  .stage-row::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(240,192,64,0.3), transparent);
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  .stage-row.completed {
+    background: rgba(44,24,16,0.1);
+    border-color: rgba(201,149,42,0.5);
+  }
+  .stage-row.new-complete { animation: stagePop 1.8s ease forwards; }
+  .stage-row.new-complete::before { animation: goldSwipe 0.6s ease forwards; }
+  @keyframes goldSwipe {
+    0%   { transform: translateX(-100%); opacity: 1; }
+    100% { transform: translateX(100%);  opacity: 0; }
+  }
+  @keyframes stagePop {
+    0%   { transform: scale(1); }
+    10%  { transform: scale(1.04); }
+    20%  { transform: scale(0.98); }
+    30%  { transform: scale(1.02); }
+    100% { transform: scale(1); }
+  }
+  .stage-icon {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(201,149,42,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--ink-light);
+    flex-shrink: 0;
+    background: rgba(44,24,16,0.08);
+    transition: all 0.4s;
+  }
+  .stage-row.completed .stage-icon {
+    background: var(--tc);
+    border-color: var(--gold);
+    color: var(--gold-bright);
+    box-shadow: 0 0 8px rgba(201,149,42,0.5);
+    font-size: 0.8rem;
+  }
+  .stage-info { flex: 1; min-width: 0; }
+.stage-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem; /* Increased from 0.62rem */
+    color: var(--ink-light);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-weight: 700;
+    transition: color 0.4s;
+  }
+  .stage-row.completed .stage-label { color: var(--ink-mid); }
+  .stage-score-val {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--tc);
+    margin-top: 1px;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.4s, transform 0.4s;
+    display: block;
+  }
+.stage-msg {
+    font-family: 'Cinzel', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-align: center;
+    letter-spacing: 1px;
+    font-style: italic;
+    line-height: 1;
+    /* Always reserves space — just hidden until stage completes */
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+  }
+
+  .stage-msg.show {
+    opacity: 1;
+  }
+  .stage-row.completed .stage-score-val { opacity: 1; transform: translateY(0); }
+  .stage-badge {
+    font-family: 'Cinzel', serif;
+    font-size: 0.55rem;
+    padding: 3px 7px;
+    border-radius: 2px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border: 1px solid rgba(201,149,42,0.2);
+    color: var(--ink-light);
+    background: rgba(44,24,16,0.08);
+    transition: all 0.4s;
+  }
+  .stage-row.completed .stage-badge {
+    background: var(--tc);
+    border-color: var(--gold);
+    color: var(--gold-bright);
+  }
+  footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 20px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.62rem;
+    color: var(--gold);
+    background: linear-gradient(180deg, #1a0d06 0%, #0d0603 100%);
+    border-top: 3px solid var(--gold);
+    letter-spacing: 1px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+  #statusMsg { color: var(--parch-deep); }
+  #overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cel-box { text-align: center; opacity: 0; transform: scale(0.7); }
+  .cel-box.show { animation: celIn 3.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+  @keyframes celIn {
+    0%   { opacity: 0; transform: scale(0.5) rotate(-3deg); }
+    10%  { opacity: 1; transform: scale(1.1) rotate(1deg); }
+    18%  { transform: scale(0.96) rotate(0deg); }
+    26%  { transform: scale(1.03); }
+    34%  { transform: scale(1); }
+    70%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.92); }
+  }
+  .cel-scroll {
+    background: linear-gradient(160deg, #f5e6c8, #e8d5a3, #dcc88a);
+    border: 4px solid var(--gold);
+    border-radius: 8px;
+    padding: 28px 48px;
+    box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--gold), 0 0 60px rgba(201,149,42,0.5), 0 20px 60px rgba(0,0,0,0.8);
+    position: relative;
+  }
+.cel-scroll::before, .cel-scroll::after {
+    content: '\2726'; /* This is a 4-pointed star glyph */
+    position: absolute;
+    font-size: 1.5rem;
+    color: var(--gold);
+    top: 8px;
+  }
+  .cel-scroll::before { left: 10px; }
+  .cel-scroll::after  { right: 10px; }
+  .cel-team {
+    font-family: 'Cinzel', serif;
+    font-size: 0.9rem;
+    color: var(--ink-light);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .cel-main {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1;
+    text-shadow: 2px 2px 0 var(--parch-deep);
+  }
+  .cel-sub {
+    font-family: 'IM Fell English', serif;
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--crimson);
+    margin-top: 8px;
+    letter-spacing: 1px;
+  }
+  .cel-divider { color: var(--gold); font-size: 1.2rem; letter-spacing: 6px; margin: 6px 0; }
+  .particle { position: fixed; pointer-events: none; z-index: 201; }
+  .demo-banner {
+    background: rgba(139,26,26,0.2);
+    border: 1px solid rgba(139,26,26,0.4);
+    border-radius: 3px;
+    padding: 3px 10px;
+    font-size: 0.6rem;
+    color: var(--crimson-lt);
+    letter-spacing: 1px;
+    font-family: 'Cinzel', serif;
+  }
+  /* Tournament Timer Styles */
+  .timer-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-bottom: 8px;
+    font-family: 'Cinzel', serif;
+  }
+#timerDisplay {
+    font-family: 'Cinzel Decorative', 'Cinzel', serif;
+    font-size: 3.8rem;
+    font-weight: 700;
+    color: #ff0000; /* Changed to pure red */
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 15px rgba(240,192,64,0.4);
+    line-height: 1;
+    letter-spacing: 1px;
+  }
+  .timer-controls {
+    display: flex;
+    gap: 6px;
+  }
+  .timer-controls button {
+    background: rgba(44, 24, 16, 0.7);
+    border: 1px solid var(--gold);
+    color: var(--parchment);
+    font-family: 'Cinzel', serif;
+    font-size: 0.55rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+  }
+  .timer-controls button:hover {
+    background: var(--gold);
+    color: var(--ink);
+    box-shadow: 0 0 8px var(--gold-bright);
+  }
+.music-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-top: 15px; /* Adds space from the top frame */
+  }
+  .music-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #musicBtn {
+    background: rgba(44, 24, 16, 0.7);
+    border: 1px solid var(--gold);
+    color: var(--gold-bright);
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    padding: 3px 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    border-radius: 3px;
+  }
+  /* Medieval themed Volume Slider */
+  #volumeSlider {
+    -webkit-appearance: none;
+    width: 60px;
+    height: 4px;
+    background: var(--ink-mid);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  #volumeSlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background: var(--gold);
+    border-radius: 50%;
+    border: 1px solid var(--ink);
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+  }
+  /* Timer End Pop-up */
+  .timer-end-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .timer-end-box {
+    background: rgba(44, 24, 16, 0.95);
+    border: 4px solid var(--gold);
+    border-radius: 8px;
+    padding: 50px; text-align: center;
+    box-shadow: 0 0 50px rgba(201,149,42,0.6);
+  }
+  .timer-end-box h2 {
+    font-family: 'Cinzel Decorative', serif; color: var(--crimson-lt); font-size: 3rem; margin-bottom: 10px; text-shadow: 0 0 15px rgba(192,57,43,0.5);
+  }
+  .timer-end-box p {
+    font-family: 'Cinzel', serif; color: var(--parchment); font-size: 1.3rem; margin-bottom: 30px;
+  }
+  .timer-end-box button {
+    background: var(--gold); color: var(--ink); border: none; padding: 12px 30px;
+    font-family: 'Cinzel', serif; font-size: 1.2rem; font-weight: 700; cursor: pointer; border-radius: 4px; transition: all 0.2s;
+  }
+  .timer-end-box button:hover {
+    background: var(--gold-bright); box-shadow: 0 0 20px var(--gold-bright); transform: scale(1.05);
+  }
+  .team-card.battle-ready {
+    background: linear-gradient(160deg, #fffbe0 0%, #f5e6c8 40%, #e8d5a3 100%) !important;
+    animation: battleReadyGlow 2s ease-in-out infinite;
+  }
+  @keyframes battleReadyGlow {
+    0%, 100% { box-shadow: 0 0 0 3px var(--gold-bright), 0 0 0 5px var(--ink), 0 0 0 7px var(--gold-bright), 4px 4px 16px rgba(0,0,0,0.7), 0 0 30px rgba(255,215,0,0.5); }
+    50%       { box-shadow: 0 0 0 3px var(--gold-bright), 0 0 0 5px var(--ink), 0 0 0 9px var(--gold-bright), 4px 4px 16px rgba(0,0,0,0.7), 0 0 60px rgba(255,215,0,0.9); }
+  }
+  .battle-ready-banner {
+    display: none;
+    text-align: center;
+    padding: 14px 8px;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--gold-bright);
+    background: linear-gradient(180deg, #1a0d06 0%, #2c1a08 50%, #1a0d06 100%);
+    border-top: 3px solid var(--gold-bright);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    animation: battleReadyText 1.5s ease-in-out infinite alternate;
+    margin-top: auto;
+  }
+  .team-card.battle-ready .battle-ready-banner {
+    display: block;
+  }
+  @keyframes battleReadyText {
+    from { text-shadow: 0 0 10px rgba(255,215,0,0.6); color: var(--gold); }
+    to   { text-shadow: 0 0 25px rgba(255,215,0,1), 0 0 50px rgba(255,215,0,0.6); color: #fff8dc; }
+  }
+
+  /* â”€â”€ Bounce progress bar â”€â”€ */
+  .progress-bar-fill {
+    transition: width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  }
+
+  /* â”€â”€ Floating embers â”€â”€ */
+  .ember {
+    position: fixed;
+    bottom: -10px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    animation: emberRise linear infinite;
+  }
+  @keyframes emberRise {
+    0%   { transform: translateY(0)     translateX(0px)  scale(1);   opacity: 0.9; }
+    40%  { transform: translateY(-40vh) translateX(18px) scale(0.7); opacity: 0.6; }
+    100% { transform: translateY(-105vh) translateX(-8px) scale(0.2); opacity: 0; }
+  }
+
+  /* â”€â”€ 1st-place crown â”€â”€ */
+  .rank-crown {
+    text-align: center;
+    font-size: 1.6rem;
+    line-height: 1;
+    animation: crownBob 2s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px gold);
+    margin-bottom: 2px;
+  }
+  @keyframes crownBob {
+    0%, 100% { transform: translateY(0)    rotate(-5deg); }
+    50%       { transform: translateY(-5px) rotate(5deg);  }
+  }
+
+  /* â”€â”€ Leading team fire border â”€â”€ */
+  .team-card.leading {
+    animation: torchFlicker 0.12s ease-in-out infinite alternate !important;
+  }
+  @keyframes torchFlicker {
+    0%   { box-shadow: 0 0 0 2px #ffd700, 0 0 0 4px var(--ink), 0 0 0 6px #ffd700, 0 0 18px rgba(255,140,0,0.8), 0 0 40px rgba(255,80,0,0.4); }
+    100% { box-shadow: 0 0 0 3px #ffaa00, 0 0 0 5px var(--ink), 0 0 0 8px #ff8800, 0 0 30px rgba(255,100,0,1.0), 0 0 60px rgba(255,50,0,0.6); }
+  }
+
+  /* â”€â”€ Card hover 3-D tilt â”€â”€ */
+  .team-card { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+  .team-card:hover { transform: perspective(900px) rotateY(2deg) rotateX(-1.5deg) scale(1.015); }
+
+  /* â”€â”€ Screen gold flash â”€â”€ */
+  .score-flash {
+    position: fixed; inset: 0;
+    background: rgba(255,215,0,0.28);
+    pointer-events: none; z-index: 500;
+    animation: scoreFlash 0.7s ease forwards;
+  }
+  @keyframes scoreFlash {
+    0%   { opacity: 0; }
+    15%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* â”€â”€ Card shockwave â”€â”€ */
+  .shockwave {
+    position: absolute;
+    border-radius: 50%;
+    border: 3px solid var(--gold-bright);
+    pointer-events: none;
+    z-index: 50;
+    animation: shockOut 0.8s ease-out forwards;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 0; height: 0;
+  }
+  @keyframes shockOut {
+    0%   { width: 0;     height: 0;     opacity: 1; }
+    100% { width: 250px; height: 250px; opacity: 0; }
+  }
+
+  /* â”€â”€ Animated 1st-place rank badge â”€â”€ */
+  .rank-badge.first-place {
+    background: linear-gradient(135deg, #ffd700 0%, #ffe066 50%, #ffd700 100%);
+    background-size: 200% 200%;
+    animation: rankShimmer 2s ease infinite;
+    color: var(--ink);
+    border-color: var(--gold-bright);
+    font-size: 0.85rem;
+    padding: 3px 10px;
+    box-shadow: 0 0 14px rgba(255,215,0,0.9);
+  }
+  @keyframes rankShimmer {
+    0%   { background-position: 0%   50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0%   50%; }
+  }
+
+  /* â”€â”€ Timer drama â”€â”€ */
+  #timerDisplay.timer-warning {
+    animation: timerPulse 1s ease-in-out infinite;
+  }
+  #timerDisplay.timer-panic {
+    animation: timerPanic 0.3s ease-in-out infinite;
+  }
+  @keyframes timerPulse {
+    0%,100% { transform: scale(1);    text-shadow: 0 0 15px rgba(255,0,0,0.5); }
+    50%      { transform: scale(1.06); text-shadow: 0 0 35px rgba(255,0,0,1);   }
+  }
+  @keyframes timerPanic {
+    0%,100% { transform: scale(1);    text-shadow: 0 0 20px rgba(255,0,0,0.9); }
+    50%      { transform: scale(1.12); text-shadow: 0 0 60px rgba(255,0,0,1), 0 0 100px rgba(255,0,0,0.6); }
+  }
+
+  /* â”€â”€ Overtaken overlay â”€â”€ */
+  .overtaken-overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none; z-index: 600;
+    opacity: 0; transition: opacity 0.4s ease;
+  }
+  .overtaken-overlay.show { opacity: 1; }
+  .overtaken-inner {
+    background: linear-gradient(135deg, #1a0800, #2c1810 50%, #1a0800);
+    border: 4px solid var(--gold-bright);
+    border-radius: 10px;
+    padding: 24px 56px;
+    text-align: center;
+    box-shadow: 0 0 0 2px var(--ink), 0 0 80px rgba(255,165,0,0.7), 0 20px 60px rgba(0,0,0,0.9);
+    transform: scale(0.8);
+    transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .overtaken-overlay.show .overtaken-inner { transform: scale(1); }
+  .overtaken-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.9rem; letter-spacing: 6px;
+    color: var(--gold); text-transform: uppercase;
+    margin-bottom: 8px; opacity: 0.85;
+  }
+  .overtaken-name {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2rem; font-weight: 700;
+    color: var(--gold-bright);
+    text-shadow: 0 0 20px rgba(255,215,0,0.9), 2px 2px 4px rgba(0,0,0,0.8);
+    line-height: 1.1;
+  }
+  .overtaken-sub {
+    font-family: 'IM Fell English', serif;
+    font-style: italic; font-size: 1rem;
+    color: var(--parch-deep); margin-top: 6px;
+  }
+
+  /* â”€â”€ Ticker â”€â”€ */
+  .ticker-wrap {
+    flex: 1; overflow: hidden;
+    margin: 0 20px;
+    mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+  }
+  .ticker-content {
+    display: inline-block;
+    white-space: nowrap;
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    color: var(--gold);
+    letter-spacing: 2px;
+    animation: tickerScroll 30s linear infinite;
+  }
+  @keyframes tickerScroll {
+    0%   { transform: translateX(60vw);  }
+    100% { transform: translateX(-100%); }
+  }
+
+  /* â”€â”€ Final countdown overlay â”€â”€ */
+  .countdown-overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.6);
+    pointer-events: none; z-index: 700;
+  }
+  .countdown-number {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 18rem; font-weight: 700;
+    color: var(--crimson-lt);
+    text-shadow: 0 0 60px rgba(192,57,43,0.9), 0 0 120px rgba(192,57,43,0.5);
+    animation: countPop 1s ease-out forwards;
+    line-height: 1;
+  }
+  @keyframes countPop {
+    0%   { transform: scale(1.4); opacity: 0; }
+    20%  { transform: scale(1.0); opacity: 1; }
+    70%  { opacity: 1; }
+    100% { transform: scale(0.8); opacity: 0; }
+  }</style>
+</head>
+<body>
+
+<div id="overlay">
+  <div class="cel-box" id="celBox">
+    <div class="cel-scroll">
+      <div class="cel-divider">&#x22C6; &#x2726; &#x22C6;</div>
+      <div class="cel-team" id="celTeam"></div>
+      <div class="cel-main" id="celMain"></div>
+      <div class="cel-sub"  id="celSub"></div>
+      <div class="cel-divider">&#x22C6; &#x2726; &#x22C6;</div>
+    </div>
+  </div>
+</div>
+
+<div id="overtakenBox" class="overtaken-overlay">
+  <div class="overtaken-inner">
+    <div class="overtaken-label">&#x2694; New Leader &#x2694;</div>
+    <div class="overtaken-name" id="overtakenMain"></div>
+    <div class="overtaken-sub" id="overtakenSub"></div>
+  </div>
+</div>
+
+<div id="countdownOverlay" class="countdown-overlay" style="display:none;">
+  <div class="countdown-number" id="countdownNumber">10</div>
+</div>
+<header>
+  <div class="header-left">
+    <span class="event-label">Clinical Skills Development Service</span>
+    <h1 id="eventTitle">Sim Quest</h1>
+  </div>
+
+  <div class="crest">&#x269C;</div>
+
+  <div class="center-controls">
+    <div id="timerDisplay">40:00</div>
+    <div class="timer-controls">
+      <button id="timerStartBtn" onclick="startTimer()">Start</button>
+      <button id="timerStopBtn" onclick="stopTimer()">Stop</button>
+      <button id="timerResetBtn" onclick="resetTimer()">Reset</button>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <div class="music-container">
+      <audio id="bgMusic" loop>
+        <source src="music.mp3" type="audio/mpeg">
+      </audio>
+      <div class="music-controls">
+        <button id="musicBtn" onclick="toggleMusic()">&#9654; Music</button>
+        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5" oninput="updateVolume()">
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="divider">&#x2014; &#x2726; &#x2014; &#x2726; &#x2014; &#x2726; &#x2014;</div>
+
+<div class="board" id="board"></div>
+
+<footer>
+  <span id="statusMsg">Awaiting the Herald...</span>
+  <div class="ticker-wrap"><span id="tickerContent" class="ticker-content">&#x2726; Welcome to Sim Quest &#x2726; May the best team prevail &#x2726;</span></div>
+  <span id="demoBadge"></span>
+</footer>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  FIREBASE CONFIG — paste your project's config object here
+//  Leave as-is to fall back to local BroadcastChannel mode
+// ══════════════════════════════════════════════════════════════
+var FIREBASE_CONFIG = {
+  apiKey:            'AIzaSyCosW37BbfuFnMVt7zaWQqDIDL-zpZS0oY',
+  authDomain:        'simquest-af719.firebaseapp.com',
+  databaseURL:       'https://simquest-af719-default-rtdb.firebaseio.com',
+  projectId:         'simquest-af719',
+  storageBucket:     'simquest-af719.firebasestorage.app',
+  messagingSenderId: '546627648326',
+  appId:             '1:546627648326:web:16f0fe03b4b71f34f98347'
+};
+// ══════════════════════════════════════════════════════════════
+
+var _db = null;
+(function() {
+  if (FIREBASE_CONFIG.apiKey === 'YOUR_API_KEY') return;
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    _db = firebase.database();
+  } catch(e) { console.warn('Firebase init failed:', e); }
+})();
+
+var CONFIG = {
+  APPS_SCRIPT_URL: 'YOUR_APPS_SCRIPT_URL_HERE',
+  EVENT_TITLE:     'Sim Quest',
+  TEAM_NAMES:  ['The Moulage Mages', 'The Debriefing Druids', 'The Scenario Sorcerers', 'The SimPad Sentinels'],
+  STAGE_NAMES: ['Stage 1', 'Stage 2', 'Stage 3'],
+  TEAM_SHIELDS: ['&#x2694;', '&#x269C;', '&#x2618;', '&#x2726;'],
+  REFRESH_MS:  5000,
+  DEMO_MODE:   false,
+};
+
+function getDemoData() {
+  var now = Date.now();
+  var cycle = Math.floor(now / 7000) % 12;
+  var state = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
+  var entries = [
+    [0,0,85],[1,0,90],[2,0,78],[3,0,92],
+    [0,1,72],[1,1,88],[2,1,95],[3,1,80],
+    [0,2,91],[1,2,76],[2,2,83],[3,2,87],
+    
+  ];
+  for (var i = 0; i <= cycle && i < entries.length; i++) {
+    state[entries[i][0]][entries[i][1]] = entries[i][2];
+  }
+  return CONFIG.TEAM_NAMES.map(function(name, ti) {
+    return { team: name, stages: state[ti], total: state[ti].reduce(function(a,b){ return a+b; }, 0) };
+  });
+}
+
+var prevState = null;
+var prevLeader = null;
+var prevRanked = null;
+
+function buildBoard() {
+  document.getElementById('eventTitle').textContent = CONFIG.EVENT_TITLE;
+  var board = document.getElementById('board');
+  board.innerHTML = '';
+  CONFIG.TEAM_NAMES.forEach(function(name, ti) {
+    var card = document.createElement('div');
+    card.className = 'team-card';
+    card.dataset.team = ti;
+    card.id = 'card-' + ti;
+var stagesHTML = CONFIG.STAGE_NAMES.map(function(sname, si) {
+      var maxScores = [20, 50, 30];
+      return '<div class="stage-group">' +
+        '<div class="stage-row" id="stage-' + ti + '-' + si + '">' +
+          '<div class="stage-icon" id="sicon-' + ti + '-' + si + '">' + (si+1) + '</div>' +
+          '<div class="stage-info">' +
+            '<div class="stage-label">' + sname + '</div>' +
+            '<span class="stage-score-val" id="sscore-' + ti + '-' + si + '">&#x2014; PTS out of ' + maxScores[si] + '</span>' +
+          '</div>' +
+          '<div class="stage-badge" id="sbadge-' + ti + '-' + si + '">Pending</div>' +
+        '</div>' +
+        '<div class="stage-msg" id="smsg-' + ti + '-' + si + '"></div>' + 
+      '</div>';
+    }).join('');
+    card.innerHTML =
+      '<div class="team-header" style="position:relative;">' +
+        '<div class="rank-crown" id="crown-' + ti + '" style="display:none;">&#x1F451;</div>' +
+        '<div class="rank-badge" id="rank-' + ti + '">—</div>' +
+'<div class="team-banner">' +
+          '<div class="team-shield" id="shield-' + ti + '"></div>' +
+          '<div class="team-name">' + name.replace(/ ([^ ]+)$/, '<br>$1') + '</div>' +
+        '</div>' +
+        '<div class="team-total-row">' +
+          '<div class="team-total" id="total-' + ti + '">0</div>' +
+          '<div class="team-total-pts">/ 100 pts</div>' +
+        '</div>' +
+        '<div class="progress-bar-wrap">' +
+          '<div class="progress-bar-fill" id="prog-' + ti + '"><span class="knight-rider">&#x1F3C7;</span></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="stages">' + stagesHTML + '</div>' + '<div class="battle-ready-banner">&#x2694; BATTLE READY! &#x2694;</div>';
+    board.appendChild(card);
+  });
+}
+
+
+
+// Team sounds: Moulage Mages=1, Debriefing Druids=2, Scenario Sorcerers=3, SimPad Sentinels=4
+var teamSoundFiles = ['1.mp3', '2.mp3', '3.mp3', '4.mp3'];
+
+function playTeamSound(teamIdx) {
+  try {
+    var snd = new Audio(teamSoundFiles[teamIdx]);
+    snd.volume = 0.85;
+    snd.play().catch(function() {});
+  } catch(e) {}
+}
+
+function celebrate(teamIdx, stageIdx, isFinal) {
+  var box  = document.getElementById('celBox');
+  var team = document.getElementById('celTeam');
+  var main = document.getElementById('celMain');
+  var sub  = document.getElementById('celSub');
+  team.textContent = CONFIG.TEAM_NAMES[teamIdx];
+  playTeamSound(teamIdx);
+  if (isFinal) {
+    main.textContent = 'All Trials Complete!';
+    sub.textContent  = 'Victory is Yours';
+  } else {
+    main.textContent = CONFIG.STAGE_NAMES[stageIdx] + ' Conquered';
+    sub.textContent  = 'Huzzah!';
+  }
+  box.classList.remove('show');
+  void box.offsetWidth;
+  box.classList.add('show');
+  spawnParticles();
+}
+
+function spawnParticles() {
+  var symbols = ['\u2726', '\u269C', '\u2605', '\u2694', '\u2666'];
+  var colors  = ['#f0c040','#c9952a','#ffd700','#ffffff','#e8d5a3'];
+  for (var i = 0; i < 40; i++) {
+    var p     = document.createElement('div');
+    p.className = 'particle';
+    var col   = colors[Math.floor(Math.random() * colors.length)];
+    var size  = 12 + Math.random() * 18;
+    var x     = Math.random() * 100;
+    var y     = 30 + Math.random() * 40;
+    var dx    = (Math.random() - 0.5) * 280;
+    var dy    = -(80 + Math.random() * 220);
+    var rot   = Math.random() * 360;
+    var dur   = 1.4 + Math.random() * 1.4;
+    var delay = Math.random() * 0.5;
+    p.style.cssText = 'left:'+x+'vw;top:'+y+'vh;font-size:'+size+'px;color:'+col+';position:fixed;pointer-events:none;z-index:201;animation:pflymed '+dur+'s '+delay+'s ease forwards;';
+    p.style.setProperty('--dx', dx+'px');
+    p.style.setProperty('--dy', dy+'px');
+    p.style.setProperty('--rot', rot+'deg');
+    p.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+    document.getElementById('overlay').appendChild(p);
+    setTimeout(function(el){ return function(){ if(el.parentNode) el.parentNode.removeChild(el); }; }(p), (dur+delay)*1000+100);
+  }
+}
+
+document.head.insertAdjacentHTML('beforeend', '<style>@keyframes pflymed{0%{transform:translate(0,0) rotate(0deg);opacity:1;}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0;}}</style>');
+
+function updateBoard(data) {
+  var newState = {};
+  var newCompletions = [];
+  var soundsToPlay = [];
+  data.forEach(function(row, ti) {
+    newState[ti] = {};
+    var stages = row.stages;
+    var completedCount = stages.filter(function(s){ return s > 0; }).length;
+    var total = stages.reduce(function(a,b){ return a+(Number(b)||0); }, 0);
+    var totalEl = document.getElementById('total-'+ti);
+    if (totalEl) {
+      var prevTotal = parseInt(totalEl.textContent) || 0;
+      if (prevTotal !== total) animateScore(totalEl, prevTotal, total);
+    }
+    var prog = document.getElementById('prog-'+ti);
+    if (prog) {
+      prog.style.width = ((completedCount/3)*100)+'%';
+      if (completedCount > 0) prog.classList.add('has-progress');
+      else prog.classList.remove('has-progress');
+    }
+    stages.forEach(function(score, si) {
+      var done    = Number(score) > 0;
+      var newScore = done ? Number(score) : null;
+      newState[ti][si] = newScore;
+      if (prevState !== null && newScore !== null) {
+        var prevScore = (prevState[ti] !== undefined) ? prevState[ti][si] : undefined;
+        if (newScore !== prevScore && soundsToPlay.indexOf(ti) === -1) {
+          soundsToPlay.push(ti);
+        }
+      }
+      var stageEl = document.getElementById('stage-'+ti+'-'+si);
+      var scoreEl = document.getElementById('sscore-'+ti+'-'+si);
+      var badgeEl = document.getElementById('sbadge-'+ti+'-'+si);
+      var iconEl  = document.getElementById('sicon-'+ti+'-'+si);
+      if (!stageEl) return;
+var maxScores = [20, 50, 30];
+      var stageMessages = ['Knight Assembled!', 'Knight Talks!', 'Battle Ready!'];
+      var msgEl = document.getElementById('smsg-'+ti+'-'+si);
+
+      if (done) {
+        if (!stageEl.classList.contains('completed')) {
+          stageEl.classList.add('completed');
+          if (prevState !== null && (!prevState[ti] || prevState[ti][si] == null)) {
+            stageEl.classList.remove('new-complete');
+            void stageEl.offsetWidth;
+            stageEl.classList.add('new-complete');
+            var card = document.getElementById('card-'+ti);
+            card.classList.remove('flash');
+            void card.offsetWidth;
+            card.classList.add('flash');
+            newCompletions.push({ti:ti, si:si});
+          }
+        }
+        if (scoreEl) scoreEl.textContent = score + ' PTS out of ' + maxScores[si];
+        if (badgeEl) badgeEl.textContent = 'Done';
+        if (iconEl)  iconEl.textContent  = '\u2726';
+        if (msgEl && !msgEl.classList.contains('show')) {
+          typewriter(msgEl, stageMessages[si]);
+          msgEl.classList.add('show');
+        }
+      } else {
+        stageEl.classList.remove('completed','new-complete');
+        if (scoreEl) scoreEl.textContent = '\u2014 PTS out of ' + maxScores[si];
+        if (badgeEl) badgeEl.textContent = 'Pending';
+        if (iconEl)  iconEl.textContent  = si+1;
+        if (msgEl) {
+          msgEl.classList.remove('show'); /* Hides the text if reset */
+        }
+      }
+    });
+    var battleCard = document.getElementById('card-'+ti);
+    if (battleCard) {
+      if (completedCount === 3) battleCard.classList.add('battle-ready');
+      else battleCard.classList.remove('battle-ready');
+    }
+  });
+  if (soundsToPlay.length > 0) screenFlash();
+  // Detect early whether a leader change is happening so we can stagger sounds
+  var earlyTotals = data.map(function(row) {
+    return row.stages.reduce(function(a,b){ return a+(Number(b)||0); }, 0);
+  });
+  var earlyRanked = [0,1,2,3].slice().sort(function(a,b){
+    var diff = earlyTotals[b] - earlyTotals[a];
+    if (diff !== 0) return diff;
+    var pa = prevRanked ? prevRanked.indexOf(a) : a;
+    var pb = prevRanked ? prevRanked.indexOf(b) : b;
+    return pa - pb;
+  });
+  var earlyLeader = earlyRanked[0];
+  var overtakenHappening = (prevLeader !== null && prevLeader !== earlyLeader && earlyTotals[earlyLeader] > 0);
+  var soundBaseDelay = overtakenHappening ? 3800 : 0;
+  soundsToPlay.forEach(function(ti, idx) {
+    setTimeout(function(t){ return function(){
+      playTeamSound(t);
+      shockwaveCard(t);
+    }; }(ti), soundBaseDelay + idx * 400);
+  });
+  prevState = newState;
+  newCompletions.forEach(function(c, idx) {
+    setTimeout(function() {
+      var stages  = data[c.ti].stages;
+      var isFinal = stages.filter(function(s){ return Number(s)>0; }).length === 3;
+      celebrate(c.ti, c.si, isFinal);
+      addTickerMessage(CONFIG.TEAM_NAMES[c.ti] + ' â€” ' + CONFIG.STAGE_NAMES[c.si] + ' Complete!');
+    }, idx * 3500);
+  });
+  var total = data.reduce(function(a,r){ return a+r.stages.filter(function(s){ return Number(s)>0; }).length; }, 0);
+  document.getElementById('statusMsg').textContent = '\u269C '+total+' of 12 Trials Completed \u269C';
+
+  // Compute totals and sort teams by score descending
+  var totals = data.map(function(row) {
+    return row.stages.reduce(function(a,b){ return a+(Number(b)||0); }, 0);
+  });
+  var ranked = [0,1,2,3].slice().sort(function(a,b){
+    var diff = totals[b] - totals[a];
+    if (diff !== 0) return diff;
+    var pa = prevRanked ? prevRanked.indexOf(a) : a;
+    var pb = prevRanked ? prevRanked.indexOf(b) : b;
+    return pa - pb;
+  });
+  prevRanked = ranked.slice();
+  var ordinals = ['1st','2nd','3rd','4th'];
+
+  // Update rank badges, crown, leading class
+  ranked.forEach(function(ti, rank) {
+    var badge = document.getElementById('rank-'+ti);
+    if (badge) {
+      badge.textContent = ordinals[rank];
+      if (rank === 0 && totals[ti] > 0) badge.classList.add('first-place');
+      else badge.classList.remove('first-place');
+    }
+    var crown = document.getElementById('crown-'+ti);
+    if (crown) crown.style.display = (rank === 0 && totals[ti] > 0) ? 'block' : 'none';
+    var card = document.getElementById('card-'+ti);
+    if (card) {
+      if (rank === 0 && totals[ti] > 0) card.classList.add('leading');
+      else card.classList.remove('leading');
+    }
+  });
+  // Overtaken detection
+  var newLeader = ranked[0];
+  if (prevLeader !== null && prevLeader !== newLeader && totals[newLeader] > 0) {
+    showOvertaken(CONFIG.TEAM_NAMES[newLeader], CONFIG.TEAM_NAMES[prevLeader]);
+  }
+  prevLeader = newLeader;
+
+  // FLIP animation for card reorder
+  var board = document.getElementById('board');
+  var cards = [0,1,2,3].map(function(ti){ return document.getElementById('card-'+ti); });
+
+  // FIRST: record current positions
+  var oldRects = cards.map(function(c){ return c ? c.getBoundingClientRect() : null; });
+
+  // LAST: apply new order
+  ranked.forEach(function(ti, rank) {
+    var card = document.getElementById('card-'+ti);
+    if (card) card.style.order = rank;
+  });
+
+  // INVERT + PLAY
+  cards.forEach(function(card, ti) {
+    if (!card || !oldRects[ti]) return;
+    var newRect = card.getBoundingClientRect();
+    var dx = oldRects[ti].left - newRect.left;
+    if (Math.abs(dx) > 1) {
+      card.style.transition = 'none';
+      card.style.transform = 'translateX(' + dx + 'px)';
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          card.style.transition = 'transform 0.7s cubic-bezier(0.4, 0, 0.2, 1)';
+          card.style.transform = '';
+          setTimeout(function(){ card.style.transition = ''; }, 750);
+        });
+      });
+    }
+  });
+}
+
+// ── Score helpers ──
+function buildDataFromScores(scores) {
+  return CONFIG.TEAM_NAMES.map(function(name, ti) {
+    var stages = scores[ti] || [0, 0, 0];
+    return {
+      team: name,
+      stages: stages,
+      total: stages.reduce(function(a, b) { return a + (Number(b) || 0); }, 0)
+    };
+  });
+}
+
+function loadFromStorage() {
+  try {
+    var saved = localStorage.getItem('simquest_scores');
+    if (saved) updateBoard(buildDataFromScores(JSON.parse(saved)));
+  } catch(e) {}
+}
+
+// ── Firebase listener (real-time, cross-device) ──
+if (_db) {
+  _db.ref('simquest/scores').on('value', function(snap) {
+    var scores = snap.val();
+    if (scores) updateBoard(buildDataFromScores(scores));
+  });
+} else {
+  // ── BroadcastChannel fallback (same browser, local tabs) ──
+  try {
+    var _ch = new BroadcastChannel('sim-quest-scores');
+    _ch.onmessage = function(e) {
+      if (e.data && e.data.type === 'scores') {
+        updateBoard(buildDataFromScores(e.data.scores));
+      }
+    };
+  } catch(e) {}
+}
+
+function fetchAndUpdate() {
+  if (CONFIG.DEMO_MODE) {
+    var badge = document.getElementById('demoBadge');
+    if (!badge.innerHTML) badge.innerHTML = '<span class="demo-banner">DEMO MODE</span>';
+    updateBoard(getDemoData());
+    return;
+  }
+  if (!_db) loadFromStorage();
+}
+
+
+// â”€â”€ Animated score counter â”€â”€
+function animateScore(el, from, to) {
+  var start = null; var dur = 900;
+  function step(ts) {
+    if (!start) start = ts;
+    var p = Math.min((ts - start) / dur, 1);
+    var e = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(from + (to - from) * e);
+    if (p < 1) requestAnimationFrame(step); else el.textContent = to;
+  }
+  requestAnimationFrame(step);
+}
+
+// â”€â”€ Typewriter effect â”€â”€
+function typewriter(el, text, speed) {
+  el.textContent = '';
+  var i = 0;
+  (function next() {
+    if (i < text.length) { el.textContent += text[i++]; setTimeout(next, speed || 55); }
+  })();
+}
+
+// â”€â”€ Screen gold flash â”€â”€
+function screenFlash() {
+  var f = document.createElement('div');
+  f.className = 'score-flash';
+  document.body.appendChild(f);
+  setTimeout(function() { if (f.parentNode) f.parentNode.removeChild(f); }, 800);
+}
+
+// â”€â”€ Card shockwave â”€â”€
+function shockwaveCard(ti) {
+  var card = document.getElementById('card-' + ti);
+  if (!card) return;
+  var w = document.createElement('div');
+  w.className = 'shockwave';
+  card.appendChild(w);
+  setTimeout(function() { if (w.parentNode) w.parentNode.removeChild(w); }, 900);
+}
+
+// â”€â”€ Overtaken callout â”€â”€
+function showOvertaken(newLeader, prevTeam) {
+  try { new Audio('overtaken.mp3').play().catch(function(){}); } catch(e) {}
+  var box = document.getElementById('overtakenBox');
+  document.getElementById('overtakenMain').textContent = newLeader;
+  document.getElementById('overtakenSub').textContent  = 'has overtaken ' + prevTeam + '!';
+  box.classList.add('show');
+  setTimeout(function() { box.classList.remove('show'); }, 3800);
+}
+
+// â”€â”€ Ticker â”€â”€
+var tickerQueue = [];
+function addTickerMessage(msg) {
+  tickerQueue.push(msg);
+  if (tickerQueue.length > 8) tickerQueue.shift();
+  var el = document.getElementById('tickerContent');
+  if (el) el.textContent = tickerQueue.join('   âœ¦   ');
+}
+
+// â”€â”€ Final countdown overlay â”€â”€
+function showCountdown(n) {
+  var overlay = document.getElementById('countdownOverlay');
+  var numEl   = document.getElementById('countdownNumber');
+  if (!overlay || !numEl) return;
+  if (overlay.style.display === 'flex' && numEl.textContent === String(n)) return;
+  overlay.style.display = 'flex';
+  numEl.textContent = n;
+  numEl.style.animation = 'none';
+  void numEl.offsetWidth;
+  numEl.style.animation = 'countPop 1s ease-out forwards';
+}
+function hideCountdown() {
+  var overlay = document.getElementById('countdownOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+// â”€â”€ Floating embers â”€â”€
+setInterval(function() {
+  var e = document.createElement('div');
+  e.className = 'ember';
+  var size = 2 + Math.random() * 4;
+  var dur  = 5 + Math.random() * 7;
+  var col  = Math.random() > 0.5 ? '#ff6a00' : '#ffd700';
+  e.style.cssText = 'left:' + (Math.random()*100) + 'vw;width:' + size + 'px;height:' + size + 'px;background:' + col + ';animation-duration:' + dur + 's;';
+  document.body.appendChild(e);
+  setTimeout(function() { if (e.parentNode) e.parentNode.removeChild(e); }, (dur + 0.5) * 1000);
+}, 500);
+buildBoard();
+fetchAndUpdate();
+// No polling needed — live updates come via BroadcastChannel from the admin page
+
+// ── Audio unlock: attempt silent autoplay on load, no click prompt needed ──
+var soundUnlocked = false;
+function unlockAudio() {
+  if (soundUnlocked) return;
+  soundUnlocked = true;
+  // Attempt to resume AudioContext and prime the music element
+  if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    try { var ctx = new AC(); ctx.resume(); } catch(e) {}
+  }
+  var music = document.getElementById('bgMusic');
+  if (music) {
+    music.volume = 0;
+    music.play().then(function() {
+      music.pause();
+      music.currentTime = 0;
+      music.volume = parseFloat(document.getElementById('volumeSlider').value) || 0.5;
+      soundUnlocked = true;
+    }).catch(function() {});
+  }
+}
+
+// Try to unlock immediately and also on first interaction
+unlockAudio();
+document.addEventListener('click',   unlockAudio, { once: true });
+document.addEventListener('keydown', unlockAudio, { once: true });
+// --- TOURNAMENT TIMER LOGIC ---
+var timerInterval = null;
+var timerDuration = 40 * 60; // 40 minutes in seconds
+var timeLeft = timerDuration;
+
+function updateTimerDisplay() {
+  var minutes = Math.floor(timeLeft / 60);
+  var seconds = timeLeft % 60;
+  if (minutes < 10) minutes = '0' + minutes;
+  if (seconds < 10) seconds = '0' + seconds;
+  var timerEl = document.getElementById('timerDisplay');
+  timerEl.textContent = minutes + ':' + seconds;
+  if (timeLeft <= 10 && timeLeft > 0) {
+    timerEl.classList.add('timer-panic');
+    timerEl.classList.remove('timer-warning');
+    showCountdown(timeLeft);
+  } else if (timeLeft <= 60 && timeLeft > 0) {
+    timerEl.classList.add('timer-warning');
+    timerEl.classList.remove('timer-panic');
+    hideCountdown();
+  } else {
+    timerEl.classList.remove('timer-warning', 'timer-panic');
+    hideCountdown();
+  }
+}
+
+function startTimer() {
+  if (timerInterval !== null) return;
+  timerInterval = setInterval(function() {
+    if (timeLeft > 0) {
+      timeLeft--;
+      updateTimerDisplay();
+      var milestones = {600: '10min.mp3', 300: '5min.mp3', 180: '3min.mp3', 60: '1min.mp3'};
+      if (milestones[timeLeft]) {
+        try { new Audio(milestones[timeLeft]).play().catch(function(){}); } catch(e) {}
+      }
+      if (timeLeft === 0) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        showTimerEnd();
+      }
+    }
+  }, 1000);
+}
+
+function showTimerEnd() {
+  document.getElementById('timerEndModal').style.display = 'flex';
+  
+  try { new Audio('time up.mp3').play().catch(function(){}); } catch(e) {}
+  try {
+    var endSound = new Audio('end.mp3');
+    endSound.play().catch(function(e) {
+      console.log("Playback blocked by browser: ", e);
+    });
+  } catch(e) {}
+}
+
+function dismissTimerEnd() {
+  document.getElementById('timerEndModal').style.display = 'none';
+}
+
+function stopTimer() {
+  if (timerInterval !== null) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+function resetTimer() {
+  stopTimer();
+  timeLeft = timerDuration;
+  updateTimerDisplay();
+}
+
+// ── Firebase timer listener ──
+function applyTimerCmd(data) {
+  if (!data) return;
+  // Update duration if changed
+  if (data.duration && data.duration !== timerDuration) {
+    timerDuration = data.duration;
+  }
+  if (data.cmd === 'reset') {
+    stopTimer();
+    timeLeft = timerDuration;
+    updateTimerDisplay();
+  } else if (data.cmd === 'stop') {
+    stopTimer();
+  } else if (data.cmd === 'start') {
+    stopTimer();
+    timeLeft = data.timeLeft !== undefined ? data.timeLeft : timerDuration;
+    updateTimerDisplay();
+    startTimer();
+  }
+}
+
+if (typeof _db !== 'undefined' && _db) {
+  _db.ref('simquest/timer').on('value', function(snap) {
+    if (snap.val()) applyTimerCmd(snap.val());
+  });
+} else {
+  // BroadcastChannel fallback
+  try {
+    var _timerCh = new BroadcastChannel('sim-quest-scores');
+    _timerCh.onmessage = function(e) {
+      if (e.data && e.data.type === 'timer') applyTimerCmd(e.data);
+    };
+  } catch(e) {}
+}
+
+// Initialise the display to 40:00 on load
+updateTimerDisplay();
+
+var music = document.getElementById('bgMusic');
+var musicBtn = document.getElementById('musicBtn');
+
+function toggleMusic() {
+  if (music.paused) {
+    music.play().catch(function(){});
+    musicBtn.innerHTML = '&#10074;&#10074; Pause';
+    musicBtn.style.color = 'var(--parchment)';
+  } else {
+    music.pause();
+    musicBtn.innerHTML = '&#9654; Music';
+    musicBtn.style.color = 'var(--gold-bright)';
+  }
+}
+
+function updateVolume() {
+  var slider = document.getElementById('volumeSlider');
+  music.volume = parseFloat(slider.value);
+}
+
+// ── Firebase music listener ──
+function applyMusicCmd(data) {
+  if (!data) return;
+  if (data.volume !== undefined) {
+    var v = parseFloat(data.volume);
+    music.volume = v;
+    var slider = document.getElementById('volumeSlider');
+    if (slider) slider.value = v;
+  }
+  if (data.cmd === 'play') {
+    unlockAudio();
+    music.play().catch(function(){});
+    musicBtn.innerHTML = '&#10074;&#10074; Pause';
+    musicBtn.style.color = 'var(--parchment)';
+  } else if (data.cmd === 'pause') {
+    music.pause();
+    musicBtn.innerHTML = '&#9654; Music';
+    musicBtn.style.color = 'var(--gold-bright)';
+  }
+  // 'volume' cmd — volume already applied above, no play/pause change
+}
+
+if (typeof _db !== 'undefined' && _db) {
+  _db.ref('simquest/music').on('value', function(snap) {
+    if (snap.val()) applyMusicCmd(snap.val());
+  });
+}
+
+// Set initial volume
+updateVolume();
+
+
+
+</script>
+<div id="timerEndModal" class="timer-end-overlay" style="display: none;">
+  <div class="timer-end-box">
+    <h2>Time has Elapsed</h2>
+    <p>The phase is complete. Await the Herald's decree!</p>
+    <button onclick="dismissTimerEnd()">Continue</button>
+  </div>
+</div>
+</body>
+</html>

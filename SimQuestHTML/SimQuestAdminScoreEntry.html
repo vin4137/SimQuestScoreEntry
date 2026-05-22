@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Sim Quest – Score Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cinzel+Decorative:wght@700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+:root {
+  --parchment: #f5e6c8; --parch-dark: #e8d5a3; --parch-deep: #c9a96e;
+  --ink: #2c1810; --ink-mid: #4a2c1a; --ink-light: #7a5c3a;
+  --gold: #c9952a; --gold-bright: #f0c040;
+  --crimson: #8b1a1a; --crimson-lt: #c0392b;
+  --t0: #8b1a1a; --t0l: #c0392b;
+  --t1: #3d5a2a; --t1l: #5a8a3a;
+  --t2: #3d1a5a; --t2l: #7b3fa0;
+  --t3: #1a2a5a; --t3l: #2471a3;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  background: var(--ink);
+  font-family: 'IM Fell English', serif;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ── Header ── */
+header {
+  background: linear-gradient(180deg, #1a0d06 0%, #2c1810 60%, #1a0d06 100%);
+  border-bottom: 3px solid var(--gold);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+}
+.header-title { display: flex; flex-direction: column; gap: 1px; }
+.header-eyebrow {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 4px;
+  color: var(--gold);
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+h1 {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  letter-spacing: 1px;
+  text-shadow: 0 0 12px rgba(240,192,64,0.4);
+}
+.sync-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+.sync-pill.connected { background: rgba(26,74,26,0.3); border: 1px solid #27ae60; color: #a8e6b8; }
+.sync-pill.local     { background: rgba(74,44,26,0.3); border: 1px solid var(--gold); color: var(--parch-deep); }
+.sync-pill.error     { background: rgba(139,26,26,0.3); border: 1px solid var(--crimson-lt); color: #ffaaaa; }
+.sync-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%   { opacity: 1; transform: scale(1); }
+  50%  { opacity: 0.5; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ── Controls bar ── */
+.controls-bar {
+  background: rgba(44,24,16,0.7);
+  border-bottom: 2px solid rgba(201,149,42,0.25);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 65px;
+  z-index: 99;
+}
+.bar-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 3px;
+  color: var(--gold);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.step-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 7px 14px;
+  min-height: 36px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(201,149,42,0.35);
+  background: rgba(44,24,16,0.5);
+  color: var(--parch-deep);
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+  touch-action: manipulation;
+}
+.step-btn.active { background: var(--gold); color: var(--ink); border-color: var(--gold-bright); }
+.reset-btn {
+  margin-left: auto;
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 7px 14px;
+  min-height: 36px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(139,26,26,0.5);
+  background: rgba(139,26,26,0.15);
+  color: #e07070;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+  touch-action: manipulation;
+}
+.reset-btn:active { background: rgba(139,26,26,0.5); }
+
+/* ── Team cards ── */
+main {
+  flex: 1;
+  padding: 12px 12px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.team-card {
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--ink), 0 0 0 5px var(--gold), 3px 3px 14px rgba(0,0,0,0.7);
+}
+.team-card[data-team="0"] { --tc: var(--t0); --tcl: var(--t0l); }
+.team-card[data-team="1"] { --tc: var(--t1); --tcl: var(--t1l); }
+.team-card[data-team="2"] { --tc: var(--t2); --tcl: var(--t2l); }
+.team-card[data-team="3"] { --tc: var(--t3); --tcl: var(--t3l); }
+
+.team-header {
+  background: linear-gradient(135deg, var(--tc) 0%, var(--tcl) 100%);
+  padding: 11px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.team-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+}
+.team-total-wrap { text-align: right; }
+.team-total {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+}
+.team-total-sub {
+  font-family: 'Cinzel', serif;
+  font-size: 0.52rem;
+  color: rgba(255,255,255,0.65);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ── Stage rows ── */
+.stage-rows {
+  background: linear-gradient(160deg, #f5e6c8, #e8d5a3, #dcc88a);
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stage-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(44,24,16,0.06);
+  border: 1px solid rgba(201,149,42,0.22);
+  border-radius: 4px;
+  padding: 8px 10px;
+  transition: background 0.25s, border-color 0.25s;
+}
+.stage-row.has-score {
+  background: rgba(44,24,16,0.11);
+  border-color: rgba(201,149,42,0.5);
+}
+.stage-info { flex: 1; min-width: 0; }
+.stage-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-mid);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.stage-max-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.58rem;
+  color: var(--ink-light);
+  letter-spacing: 1px;
+}
+
+/* ── Score adjuster ── */
+.score-adjuster {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1.5px solid rgba(201,149,42,0.4);
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.adj-btn {
+  width: 46px;
+  height: 46px;
+  background: rgba(44,24,16,0.1);
+  border: none;
+  border-radius: 0;
+  color: var(--ink-mid);
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-family: 'Cinzel', serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  user-select: none;
+  transition: background 0.1s;
+  -webkit-user-select: none;
+  line-height: 1;
+}
+.adj-btn:active { background: var(--tc); color: var(--gold-bright); }
+.adj-btn.minus:active { background: rgba(139,26,26,0.7); color: #ffcccc; }
+.score-val {
+  width: 52px;
+  height: 46px;
+  text-align: center;
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(255,255,255,0.55);
+  border: none;
+  border-left: 1px solid rgba(201,149,42,0.3);
+  border-right: 1px solid rgba(201,149,42,0.3);
+  outline: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+/* Editable input variant */
+input.score-val {
+  cursor: text;
+}
+input.score-val:focus {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px rgba(201,149,42,0.5);
+}
+input.score-val.over { color: var(--crimson); }
+
+/* ── Sync flash toast ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(60px);
+  background: rgba(26,74,26,0.95);
+  border: 1px solid #27ae60;
+  border-radius: 20px;
+  padding: 8px 22px;
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #a8e6b8;
+  z-index: 300;
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+/* ── Timer card ── */
+.timer-card {
+  background: linear-gradient(160deg, #f5e6c8, #e8d5a3, #dcc88a);
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--ink), 0 0 0 5px var(--gold), 3px 3px 14px rgba(0,0,0,0.7);
+  margin: 0 12px 0;
+}
+.timer-card-header {
+  background: linear-gradient(135deg, #1a1a2c 0%, #2c2c4a 100%);
+  padding: 11px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.timer-card-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  letter-spacing: 1px;
+}
+.timer-display-admin {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 3px;
+  text-shadow: 0 0 12px rgba(240,192,64,0.5);
+  min-width: 110px;
+  text-align: right;
+}
+.timer-display-admin.warning { color: #f0c040; text-shadow: 0 0 12px rgba(240,192,64,0.8); }
+.timer-display-admin.panic   { color: #ff6060; text-shadow: 0 0 12px rgba(255,96,96,0.8); animation: panic-pulse 0.4s ease-in-out infinite; }
+@keyframes panic-pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+.timer-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+.timer-duration-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(44,24,16,0.07);
+  border: 1px solid rgba(201,149,42,0.25);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+.timer-dur-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--ink-mid);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  flex: 1;
+}
+.dur-btn {
+  width: 38px; height: 38px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(201,149,42,0.4);
+  background: rgba(44,24,16,0.1);
+  color: var(--ink-mid);
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation;
+  transition: background 0.12s;
+}
+.dur-btn:active { background: var(--gold); color: var(--ink); }
+.dur-display {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 52px;
+  text-align: center;
+}
+
+.timer-ctrl-row {
+  display: flex;
+  gap: 8px;
+}
+.timer-btn {
+  flex: 1;
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 12px 6px;
+  min-height: 48px;
+  border-radius: 4px;
+  border: 1.5px solid;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all 0.15s;
+  text-transform: uppercase;
+}
+.timer-btn.start { background: rgba(26,74,26,0.15); border-color: #27ae60; color: #2ecc71; }
+.timer-btn.start:active { background: rgba(26,74,26,0.5); }
+.timer-btn.stop  { background: rgba(139,26,26,0.15); border-color: var(--crimson-lt); color: #e07070; }
+.timer-btn.stop:active  { background: rgba(139,26,26,0.5); }
+.timer-btn.reset { background: rgba(44,24,16,0.1); border-color: rgba(201,149,42,0.4); color: var(--ink-mid); }
+.timer-btn.reset:active { background: var(--gold); color: var(--ink); }
+
+/* ── Music card ── */
+.music-card {
+  background: linear-gradient(160deg, #f5e6c8, #e8d5a3, #dcc88a);
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--ink), 0 0 0 5px var(--gold), 3px 3px 14px rgba(0,0,0,0.7);
+  margin: 10px 12px 0;
+}
+.music-card-header {
+  background: linear-gradient(135deg, #1a2c1a 0%, #2c4a2c 100%);
+  padding: 11px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.music-card-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  letter-spacing: 1px;
+}
+.music-status {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #a8e6b8;
+  padding: 3px 10px;
+  background: rgba(26,74,26,0.4);
+  border: 1px solid #27ae60;
+  border-radius: 20px;
+}
+.music-status.paused { color: var(--parch-deep); background: rgba(44,24,16,0.3); border-color: rgba(201,149,42,0.4); }
+
+.music-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+.music-ctrl-row { display: flex; gap: 8px; }
+.music-btn {
+  flex: 1;
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 12px 6px;
+  min-height: 48px;
+  border-radius: 4px;
+  border: 1.5px solid;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all 0.15s;
+  text-transform: uppercase;
+}
+.music-btn.play  { background: rgba(26,74,26,0.15); border-color: #27ae60; color: #2ecc71; }
+.music-btn.play:active  { background: rgba(26,74,26,0.5); }
+.music-btn.pause { background: rgba(139,26,26,0.15); border-color: var(--crimson-lt); color: #e07070; }
+.music-btn.pause:active { background: rgba(139,26,26,0.5); }
+
+.vol-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(44,24,16,0.07);
+  border: 1px solid rgba(201,149,42,0.25);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.vol-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--ink-mid);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.vol-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--gold) 0%, var(--gold) 50%, rgba(44,24,16,0.2) 50%);
+  outline: none;
+  cursor: pointer;
+}
+.vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 6px rgba(201,149,42,0.5);
+  cursor: pointer;
+}
+.vol-pct {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-mid);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ── Confirm overlay ── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.overlay.show { display: flex; }
+.confirm-box {
+  background: linear-gradient(160deg, #f5e6c8, #e8d5a3);
+  border: 3px solid var(--gold);
+  border-radius: 6px;
+  padding: 32px 28px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--gold), 0 0 40px rgba(0,0,0,0.7);
+  width: 100%;
+  max-width: 340px;
+}
+.confirm-box h2 {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.2rem;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.confirm-box p {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  color: var(--ink-mid);
+  font-size: 0.95rem;
+  margin-bottom: 22px;
+}
+.confirm-btns { display: flex; gap: 10px; justify-content: center; }
+.btn-yes, .btn-no {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 10px 24px;
+  min-height: 44px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  border: 1.5px solid;
+  touch-action: manipulation;
+  transition: all 0.15s;
+}
+.btn-yes { background: rgba(139,26,26,0.12); border-color: var(--crimson-lt); color: var(--crimson); }
+.btn-yes:active { background: var(--crimson-lt); color: #fff; }
+.btn-no { background: rgba(44,24,16,0.1); border-color: rgba(201,149,42,0.5); color: var(--ink-mid); }
+.btn-no:active { background: var(--gold); color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">
+    <span class="header-eyebrow">Score Control</span>
+    <h1>Sim Quest</h1>
+  </div>
+  <div class="sync-pill local" id="syncPill">
+    <div class="sync-dot"></div>
+    <span id="syncLabel">LOCAL</span>
+  </div>
+</header>
+
+<div class="controls-bar">
+  <span class="bar-label">Step</span>
+  <button class="step-btn active" onclick="setStep(1,this)">±1</button>
+  <button class="step-btn" onclick="setStep(5,this)">±5</button>
+  <button class="step-btn" onclick="setStep(10,this)">±10</button>
+  <button class="reset-btn" onclick="showConfirm()">⚔ Reset</button>
+</div>
+
+<div class="timer-card">
+  <div class="timer-card-header">
+    <span class="timer-card-title">⏱ Tournament Timer</span>
+    <div class="timer-display-admin" id="adminTimerDisplay">40:00</div>
+  </div>
+  <div class="timer-body">
+    <div class="timer-duration-row">
+      <span class="timer-dur-label">Set Duration</span>
+      <button class="dur-btn" ontouchstart="" onclick="adjustDuration(-5)">−</button>
+      <span class="dur-display" id="durDisplay">40 min</span>
+      <button class="dur-btn" ontouchstart="" onclick="adjustDuration(+5)">+</button>
+    </div>
+    <div class="timer-ctrl-row">
+      <button class="timer-btn start" ontouchstart="" onclick="timerCmd('start')">▶ Start</button>
+      <button class="timer-btn stop"  ontouchstart="" onclick="timerCmd('stop')">⏸ Stop</button>
+      <button class="timer-btn reset" ontouchstart="" onclick="timerCmd('reset')">↺ Reset</button>
+    </div>
+  </div>
+</div>
+
+<div class="music-card">
+  <div class="music-card-header">
+    <span class="music-card-title">♪ Background Music</span>
+    <span class="music-status paused" id="musicStatus">PAUSED</span>
+  </div>
+  <div class="music-body">
+    <div class="music-ctrl-row">
+      <button class="music-btn play"  ontouchstart="" onclick="musicCmd('play')">▶ Play</button>
+      <button class="music-btn pause" ontouchstart="" onclick="musicCmd('pause')">⏸ Pause</button>
+    </div>
+    <div class="vol-row">
+      <span class="vol-label">Volume</span>
+      <input class="vol-slider" id="volSlider" type="range" min="0" max="1" step="0.01" value="0.5"
+        oninput="onVolSlider(this)">
+      <span class="vol-pct" id="volPct">50%</span>
+    </div>
+  </div>
+</div>
+
+<main id="teamsGrid"></main>
+
+<div class="overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <h2>Reset All?</h2>
+    <p>All team scores will be cleared. This cannot be undone.</p>
+    <div class="confirm-btns">
+      <button class="btn-yes" onclick="doReset()">Reset All</button>
+      <button class="btn-no"  onclick="hideConfirm()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✦ Synced ✦</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  FIREBASE CONFIG — paste your project's config object here
+//  Leave as-is to use local-only mode (same browser, different tabs)
+// ══════════════════════════════════════════════════════════════
+var FIREBASE_CONFIG = {
+  apiKey:            'AIzaSyCosW37BbfuFnMVt7zaWQqDIDL-zpZS0oY',
+  authDomain:        'simquest-af719.firebaseapp.com',
+  databaseURL:       'https://simquest-af719-default-rtdb.firebaseio.com',
+  projectId:         'simquest-af719',
+  storageBucket:     'simquest-af719.firebasestorage.app',
+  messagingSenderId: '546627648326',
+  appId:             '1:546627648326:web:16f0fe03b4b71f34f98347'
+};
+// ══════════════════════════════════════════════════════════════
+
+var TEAM_NAMES  = ['The Moulage Mages','The Debriefing Druids','The Scenario Sorcerers','The SimPad Sentinels'];
+var STAGE_NAMES = ['Stage 1','Stage 2','Stage 3'];
+var STAGE_MAX   = [20, 50, 30];
+var TOTAL_MAX   = 100;
+
+var scores  = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
+var step    = 1;
+var _db     = null;
+var _ch     = null;
+var toastTimer = null;
+
+// ── Init Firebase or fall back to BroadcastChannel ──
+(function() {
+  if (FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY') {
+    try {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      _db = firebase.database();
+      _db.ref('simquest/scores').once('value', function(snap) {
+        if (snap.val()) { scores = snap.val(); renderAll(); }
+      });
+      setSyncStatus('connected', 'FIREBASE');
+      return;
+    } catch(e) {
+      setSyncStatus('error', 'ERROR');
+    }
+  }
+  // Local fallback
+  try {
+    _ch = new BroadcastChannel('sim-quest-scores');
+    setSyncStatus('local', 'LOCAL');
+  } catch(e) {}
+  try {
+    var saved = localStorage.getItem('simquest_scores');
+    if (saved) { scores = JSON.parse(saved); }
+  } catch(e) {}
+})();
+
+function setSyncStatus(type, label) {
+  var pill  = document.getElementById('syncPill');
+  var lbl   = document.getElementById('syncLabel');
+  pill.className = 'sync-pill ' + type;
+  lbl.textContent = label;
+}
+
+// ── Build UI ──
+function buildGrid() {
+  var grid = document.getElementById('teamsGrid');
+  grid.innerHTML = '';
+  TEAM_NAMES.forEach(function(name, ti) {
+    var card = document.createElement('div');
+    card.className = 'team-card';
+    card.dataset.team = ti;
+
+    var stageRows = STAGE_NAMES.map(function(sname, si) {
+      return '<div class="stage-row" id="srow-'+ti+'-'+si+'">' +
+        '<div class="stage-info">' +
+          '<div class="stage-label">'+sname+'</div>' +
+          '<div class="stage-max-label">Max: '+STAGE_MAX[si]+' pts</div>' +
+        '</div>' +
+        '<div class="score-adjuster">' +
+          '<button class="adj-btn minus" ontouchstart="" onclick="adjust('+ti+','+si+',-1)">−</button>' +
+          '<input class="score-val" id="sv-'+ti+'-'+si+'" type="number" '+
+            'min="0" max="'+STAGE_MAX[si]+'" value="0" '+
+            'onchange="setScore('+ti+','+si+',this.value)" '+
+            'oninput="markOver(this,'+STAGE_MAX[si]+')">' +
+          '<button class="adj-btn plus"  ontouchstart="" onclick="adjust('+ti+','+si+',+1)">+</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    card.innerHTML =
+      '<div class="team-header">' +
+        '<span class="team-name">'+name+'</span>' +
+        '<div class="team-total-wrap">' +
+          '<div class="team-total" id="tt-'+ti+'">0</div>' +
+          '<div class="team-total-sub">/ '+TOTAL_MAX+' pts</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="stage-rows">'+stageRows+'</div>';
+
+    grid.appendChild(card);
+  });
+  renderAll();
+}
+
+// ── Render ──
+function renderAll() {
+  TEAM_NAMES.forEach(function(_, ti) {
+    var total = 0;
+    STAGE_NAMES.forEach(function(_, si) {
+      var v = Math.max(0, Number(scores[ti][si]) || 0);
+      total += v;
+      var inp = document.getElementById('sv-'+ti+'-'+si);
+      if (inp) { inp.value = v; inp.classList.toggle('over', v > STAGE_MAX[si]); }
+      var row = document.getElementById('srow-'+ti+'-'+si);
+      if (row) row.classList.toggle('has-score', v > 0);
+    });
+    var tot = document.getElementById('tt-'+ti);
+    if (tot) tot.textContent = total;
+  });
+}
+
+// ── Adjust by step ──
+function adjust(ti, si, dir) {
+  var cur  = Number(scores[ti][si]) || 0;
+  var next = Math.max(0, Math.min(STAGE_MAX[si], cur + dir * step));
+  scores[ti][si] = next;
+  commit();
+}
+
+// ── Set score directly from input ──
+function setScore(ti, si, val) {
+  scores[ti][si] = Math.max(0, parseInt(val) || 0);
+  commit();
+}
+
+function markOver(inp, max) {
+  inp.classList.toggle('over', (parseInt(inp.value)||0) > max);
+}
+
+// ── Timer state ──
+var timerDurMin  = 40;       // editable duration in minutes
+var timerLeft    = 40 * 60;  // seconds remaining (local display only)
+var timerRunning = false;
+var timerTick    = null;
+
+function adjustDuration(delta) {
+  timerDurMin = Math.max(1, Math.min(99, timerDurMin + delta));
+  document.getElementById('durDisplay').textContent = timerDurMin + ' min';
+  // Only update display if timer is reset (not running)
+  if (!timerRunning && timerLeft === timerDurMin * 60 - delta * 60) {
+    timerLeft = timerDurMin * 60;
+    renderTimerDisplay();
+  }
+}
+
+function timerCmd(cmd) {
+  if (cmd === 'start') {
+    if (timerRunning) return;
+    timerRunning = true;
+    timerTick = setInterval(function() {
+      if (timerLeft > 0) { timerLeft--; renderTimerDisplay(); }
+      else { clearInterval(timerTick); timerTick = null; timerRunning = false; }
+    }, 1000);
+  } else if (cmd === 'stop') {
+    clearInterval(timerTick); timerTick = null; timerRunning = false;
+  } else if (cmd === 'reset') {
+    clearInterval(timerTick); timerTick = null; timerRunning = false;
+    timerLeft = timerDurMin * 60;
+    renderTimerDisplay();
+  }
+  // Broadcast to leaderboard
+  var payload = { cmd: cmd, duration: timerDurMin * 60, timeLeft: timerLeft };
+  if (_db) {
+    _db.ref('simquest/timer').set(payload);
+  } else if (_ch) {
+    _ch.postMessage({ type: 'timer', ...payload });
+  }
+  showToast();
+}
+
+function renderTimerDisplay() {
+  var el = document.getElementById('adminTimerDisplay');
+  if (!el) return;
+  var m = Math.floor(timerLeft / 60);
+  var s = timerLeft % 60;
+  el.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  el.className = 'timer-display-admin' +
+    (timerLeft <= 10 ? ' panic' : timerLeft <= 60 ? ' warning' : '');
+}
+
+// ── Init timer display ──
+renderTimerDisplay();
+
+// ── Music controls ──
+var musicPlaying = false;
+var musicVolume  = 0.5;
+
+function musicCmd(cmd) {
+  musicPlaying = (cmd === 'play');
+  var status = document.getElementById('musicStatus');
+  if (status) {
+    status.textContent = musicPlaying ? 'PLAYING' : 'PAUSED';
+    status.className = 'music-status' + (musicPlaying ? '' : ' paused');
+  }
+  var payload = { cmd: cmd, volume: musicVolume };
+  if (_db) {
+    _db.ref('simquest/music').set(payload);
+  } else if (_ch) {
+    _ch.postMessage({ type: 'music', ...payload });
+  }
+  showToast();
+}
+
+function onVolSlider(slider) {
+  musicVolume = parseFloat(slider.value);
+  var pct = Math.round(musicVolume * 100);
+  document.getElementById('volPct').textContent = pct + '%';
+  // Update gradient fill
+  slider.style.background = 'linear-gradient(to right, var(--gold) 0%, var(--gold) ' + pct + '%, rgba(44,24,16,0.2) ' + pct + '%)';
+  // Broadcast volume change live
+  var payload = { cmd: musicPlaying ? 'play' : 'volume', volume: musicVolume };
+  if (_db) {
+    _db.ref('simquest/music').set(payload);
+  } else if (_ch) {
+    _ch.postMessage({ type: 'music', ...payload });
+  }
+}
+
+// ── Commit & sync ──
+function commit() {
+  renderAll();
+  if (_db) {
+    _db.ref('simquest/scores').set(scores);
+  } else {
+    try { localStorage.setItem('simquest_scores', JSON.stringify(scores)); } catch(e) {}
+    if (_ch) _ch.postMessage({ type: 'scores', scores: scores });
+  }
+  showToast();
+}
+
+// ── Toast ──
+function showToast() {
+  var t = document.getElementById('toast');
+  if (toastTimer) clearTimeout(toastTimer);
+  t.classList.add('show');
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 1200);
+}
+
+// ── Step ──
+function setStep(n, btn) {
+  step = n;
+  document.querySelectorAll('.step-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
+// ── Reset ──
+function showConfirm() { document.getElementById('confirmOverlay').classList.add('show'); }
+function hideConfirm() { document.getElementById('confirmOverlay').classList.remove('show'); }
+function doReset() {
+  scores = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
+  commit();
+  hideConfirm();
+}
+
+buildGrid();
+</script>
+</body>
+</html>
